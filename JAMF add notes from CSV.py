@@ -5,11 +5,11 @@ import logging
 import csv
 
 #API key
-key = '61ZXVFCFLQNGNHPP8Y38JK8KF7GDJWMW'
+key = '7JM97TTS2AST6HQPAVX491V5N8WPDWED'
 #Networkd ID
-ID = '028794'
+ID = '77385124'
 #URL
-jamf_url = 'https://itdynamics.jamfcloud.com/api/'
+jamf_url = 'https://itdynamicslabs.jamfcloud.com/api/'
 #output file
 outputFile = 'output.log'
 #CSV file
@@ -39,7 +39,13 @@ def load_csv(path):
     return rows
 
 ##Start of script------------------------------------------------------------------------------------------------------------------------------
+with open('output.json', 'w') as file:
+    client = Japi.JamfAPIClient(jamf_url, ID, key)
+    response = client.get_devices()
+    file.write(json.dumps(response, indent=4))
+    
 
+exit(0)
 logging.info("Script Started.")
 logging.info("Current date: %s", datetime.now().date())
 

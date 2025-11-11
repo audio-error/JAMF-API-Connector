@@ -14,14 +14,45 @@ class JamfAPIClient:
     """
 
     device_dictionary = {}
+    location_dictionary = {}
 
     def __init__(self, jamf_url: str, username: str, password: str, timeout: float = 10.0):
         self.jamf_url = jamf_url.rstrip('/') + '/'
         self.auth = HTTPBasicAuth(username, password)
         self.timeout = timeout
         self.createDeviceUDIDdict()
+        self.mapLocations()
+        self.mapDevicesToLocations()
+        print("Initialised.")
+
+    def mapLocations(self):
+        """
+        GET all locations and map them
+        """
+        print("Mapping all locations's id's -> Location Names...")
+        print("    Getting all locations...", end='')
+        resp = requests.get(
+            f'{self.jamf_url}locations/',
+            auth=self.auth,
+            timeout=self.timeout
+        )
+        print("    Done.")
+        print("    Creating dictionary...", end='')
+        resp.raise_for_status()
+        response = resp.json()
+        for location in response["locations"]:
+            self.location_dictionary[location["id"]] = location["name"]
+        print("    Done.")
+        print("    Writing output...", end='')
+        with open("LocationDict.json", 'w') as f:
+            f.write(json.dumps(self.location_dictionary, indent=4))
+        print("    Done.")
+        print()
 
     def createDeviceUDIDdict(self):
+        """
+        GET all devices and map them
+        """
         print("Mapping all device's Serial Numbers -> UDIDs...")
         print("    Getting all devices...", end='')
         allDevices = self.get_devices()["devices"]
@@ -31,12 +62,38 @@ class JamfAPIClient:
         for device in allDevices:
             deviceDict[device["serialNumber"]] = device["UDID"]
         print("    Done.")
-        print("    Writing to output...", end='')
+        print("    Writing output...", end='')
         self.device_dictionary = deviceDict
         with open("DeviceDict.json", 'w') as f:
             f.write(json.dumps(self.device_dictionary, indent=4))
         print("    Done.")
         print()
+
+    def mapDevicesToLocations(self):
+        "This will order the devices by location"
+        mappedDevices = {}
+        print("Mapping devices to locations")
+        for locationID in self.location_dictionary.keys():
+            locationName = self.location_dictionary[locationID]
+            print(F"    getting devices for {locationName}")
+            devices = self.get_devices(locationID)["devices"]
+            d = {}
+            for device in devices:
+                d[device["UDID"]] = {
+                    "name" : device["name"],
+                    "serialNumber" : device["serialNumber"],
+                    "class" : device["class"]
+                }
+            mappedDevices[locationName] = d
+            print("    Done.")
+
+        print("    Writing output...", end='')
+        with open("DeviceLocationDict.json", 'w') as f:
+            f.write(json.dumps(mappedDevices, indent=4))
+        print("    Done.")
+        print()
+            
+        
 
 ## will replace the curren notes in the device with specified onces
     def replace_device_notes(self, udid: str, notes: str) -> dict:
@@ -136,20 +193,16 @@ class JamfAPIClient:
         return {"ok": False, "status_code": status, "error": None, "response": body}
 
 
-    def get_devices(self) -> dict:
+    def get_devices(self, filterLocation: str = "") -> dict:
         """
         GET list of devices.
         """
+        params = {'location': filterLocation if filterLocation != "" else None}
         resp = requests.get(
             f'{self.jamf_url}devices',
             auth=self.auth,
+            params=params,
             timeout=self.timeout
         )
         resp.raise_for_status()
         return resp.json()
-
-# client = JamfAPIClient('https://jamf.example.com/api/', ID, key)
-# client.add_device_notes('32fdbf3d...', 'Sean is the best')
-# print(client.get_device('32fdbf3d...'))
-# print(client.get_devices())
-
