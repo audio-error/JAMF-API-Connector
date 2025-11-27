@@ -133,7 +133,7 @@ class JamfAPIClient:
             return {"ok": False, "status_code": None, "error": "Unexpected get_device response structure", "response": dev}
 
         old = dev["device"]["notes"] or ""
-        data = {"udid": udid, "notes": f"{old}\n\nFrom API Client:\n{notes}"}
+        data = {"udid": udid, "notes": f"{old}\n\---\n{notes}"}
         url = f"{self.jamf_url.rstrip('/')}/devices/{udid}/details"
 
         try:
